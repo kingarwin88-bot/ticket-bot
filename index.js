@@ -57,7 +57,12 @@ client.on("messageCreate", async (message) => {
 });
 
 // ================= READY ================= //
-client.once("clientReady", async () => {
+let panelSent = false;
+
+client.once("ready", async () => {
+
+  if (panelSent) return;
+  panelSent = true;
   console.log(`Logged in as ${client.user.tag}`);
 
   const channel = await client.channels.fetch(PANEL_CHANNEL_ID);
