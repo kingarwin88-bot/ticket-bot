@@ -71,7 +71,7 @@ client.once("clientReady", async () => {
     new ButtonBuilder()
       .setCustomId("open_ticket")
       .setLabel("𝐌𝐞𝐝𝐢𝐚𝐭𝐨𝐫")
-      .setEmoji("1492925097684500530")
+         .setEmoji("1492925097684500530")
       .setStyle(ButtonStyle.Primary)
   );
 
@@ -85,6 +85,7 @@ client.on("interactionCreate", async (interaction) => {
 
   const channelId = interaction.channel?.id;
 
+  // 🔥 منع فتح أكثر من تكت
   if (interaction.customId === "open_ticket") {
 
     const existingTicket = [...ticketData.entries()].find(
@@ -216,6 +217,7 @@ client.on("messageCreate", async (message) => {
   const cmd = args[0];
   const channelId = message.channel.id;
 
+  // ================= منع تكت ثاني ================= //
   if (cmd === "$ticket" || cmd === "$open") {
 
     const existingTicket = [...ticketData.entries()].find(
@@ -227,6 +229,7 @@ client.on("messageCreate", async (message) => {
     }
   }
 
+  // ================= $trans ================= //
   if (cmd === "$trans") {
 
     const messages = transcriptCache.get(channelId) || [];
