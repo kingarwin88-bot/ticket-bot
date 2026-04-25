@@ -12,9 +12,6 @@ const {
   TextInputStyle
 } = require("discord.js");
 
-const fs = require("fs");
-const PDFDocument = require("pdfkit");
-
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -25,58 +22,33 @@ const client = new Client({
 });
 
 // ================= CONFIG ================= //
-const TOKEN = process.env.TOKEN;
-const CATEGORY_ID = "1490745798391103580";
-const STAFF_ROLE_ID = "1490742871374954648";
-const ADMIN_ROLE_ID = "1490742893424545952";
-const PANEL_CHANNEL_ID = "1490746266261524562";
-const REVIEW_CHANNEL_ID = "1490746270145315006";
-const TRANSCRIPT_CHANNEL_ID = "1490746163689947136"; // 🔥 ADDED
+const TOKEN = "PUT_TOKEN";
+const CATEGORY_ID = "PUT_CATEGORY_ID";
+const STAFF_ROLE_ID = "PUT_STAFF_ROLE_ID";
+const ADMIN_ROLE_ID = "PUT_ADMIN_ROLE_ID";
+const PANEL_CHANNEL_ID = "PUT_PANEL_CHANNEL_ID";
+const REVIEW_CHANNEL_ID = "PUT_REVIEW_CHANNEL_ID";
 
 // ================= DATA ================= //
 const ticketOwners = new Map();
 const ticketData = new Map();
 const pendingReviews = new Map();
-const transcriptCache = new Map(); // 🔥 ADDED
-
-// ================= MESSAGE LOGGER ================= //
-client.on("messageCreate", async (message) => {
-  if (!message.guild) return;
-
-  const channelId = message.channel.id;
-
-  if (!transcriptCache.has(channelId)) {
-    transcriptCache.set(channelId, []);
-  }
-
-  transcriptCache.get(channelId).push({
-    user: message.author.tag,
-    content: message.content,
-    time: new Date().toLocaleString()
-  });
-});
 
 // ================= READY ================= //
-let panelSent = false;
-
-client.once("ready", async () => {
-
-  if (panelSent) return;
-  panelSent = true;
+client.once("clientReady", async () => {
   console.log(`Logged in as ${client.user.tag}`);
 
   const channel = await client.channels.fetch(PANEL_CHANNEL_ID);
 
   const embed = new EmbedBuilder()
-    .setTitle("𝑳𝒐𝒔 𝐌𝐞𝐝𝐢𝐚𝐭𝐨𝐫 | الـوسـطاء")
-    .setDescription("اضغط على الزر في الادنى لطلب وسيط")
-    .setColor("#FFF44F");
+    .setTitle("🎫 نظام التكتات")
+    .setDescription("اضغط لفتح تكت")
+    .setColor("Blue");
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("open_ticket")
-      .setLabel("𝐌𝐞𝐝𝐢𝐚𝐭𝐨𝐫")
-         .setEmoji("1492925097684500530")
+      .setLabel("فتح تكت")
       .setStyle(ButtonStyle.Primary)
   );
 
@@ -90,19 +62,7 @@ client.on("interactionCreate", async (interaction) => {
 
   const channelId = interaction.channel?.id;
 
-  // 🔥 منع فتح أكثر من تكت
   if (interaction.customId === "open_ticket") {
-
-    const existingTicket = [...ticketData.entries()].find(
-      t => t[1].client === interaction.user.id
-    );
-
-    if (existingTicket) {
-      return interaction.reply({
-        content: `❌ لديك تذكرة مفتوحة بالفعل <#${existingTicket[0]}>`,
-        ephemeral: true
-      });
-    }
 
     const channel = await interaction.guild.channels.create({
       name: `ticket-${interaction.user.username}`,
@@ -144,41 +104,65 @@ client.on("interactionCreate", async (interaction) => {
     interaction.reply({ content: `تم فتح التكت ${channel}`, ephemeral: true });
   }
 
-  if (interaction.customId === "take") {
+  // 🟢 استلام
+  if (!interaction.member.roles.cache.has(STAFF_ROLE_ID)) {
+  return interaction.reply({
+    content: "❌ لا تستطيع استلام التذكرة، أنت لست مسؤول",
+    ephemeral: true
+  });
+} 
 
-    if (ticketOwners.get(channelId))
-      return interaction.reply({ content: "❌ التكت مستلم", ephemeral: true });
+    if (interaction.customId === "take") {
 
-    ticketOwners.set(channelId, interaction.user.id);
-    ticketData.get(channelId).mediator = interaction.user.id;
-
-    interaction.reply(`🟢 تم الاستلام بواسطة ${interaction.user}`);
-  }
-
-  if (interaction.customId === "request_permission") {
-
-    const owner = ticketOwners.get(channelId);
-
-    if (owner !== interaction.user.id && !interaction.member.roles.cache.has(ADMIN_ROLE_ID))
-      return interaction.reply({ content: "❌ فقط المستلم", ephemeral: true });
-
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`accept_${interaction.user.id}`)
-        .setLabel("قبول")
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId(`reject_${interaction.user.id}`)
-        .setLabel("رفض")
-        .setStyle(ButtonStyle.Danger)
-    );
-
-    interaction.reply({
-      content: `<@&${ADMIN_ROLE_ID}> طلب إذن`,
-      components: [row]
+  // 🔥 ستاف فقط
+  if (!interaction.member.roles.cache.has(STAFF_ROLE_ID)) {
+    return interaction.reply({
+      content: "❌ لا تستطيع استلام التذكرة، أنت لست مسؤول",
+      ephemeral: true
     });
   }
 
+  // 🔥 إذا مستلم مسبقًا
+  if (ticketOwners.get(channelId)) {
+    return interaction.reply({
+      content: "❌ التكت مستلم بالفعل",
+      ephemeral: true
+    });
+  }
+
+  ticketOwners.set(channelId, interaction.user.id);
+  ticketData.get(channelId).mediator = interaction.user.id;
+
+  interaction.reply(`🟢 تم الاستلام بواسطة ${interaction.user}`);
+}
+  // ================= 🔥 ADD NEW COMMAND ================= //
+  if (interaction.customId === "request_permission") {
+
+  const owner = ticketOwners.get(channelId);
+
+  if (!owner || owner !== interaction.user.id) {
+    return interaction.reply({
+      content: "❌ فقط مستلم التكت يقدر يطلب إذن",
+      ephemeral: true
+    });
+  }
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`accept_${interaction.user.id}`)
+      .setLabel("قبول")
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(`reject_${interaction.user.id}`)
+      .setLabel("رفض")
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  interaction.reply({
+    content: `<@&${ADMIN_ROLE_ID}> طلب إذن`,
+    components: [row]
+  });
+}
   if (interaction.customId.startsWith("accept_")) {
 
     if (!interaction.member.roles.cache.has(ADMIN_ROLE_ID))
@@ -205,11 +189,54 @@ client.on("interactionCreate", async (interaction) => {
 
   if (interaction.customId === "close") {
 
-    ticketOwners.delete(channelId);
-    ticketData.delete(channelId);
+  // 🔥 ستاف فقط
+  if (!interaction.member.roles.cache.has(STAFF_ROLE_ID)) {
+    return interaction.reply({
+      content: "❌ لا تستطيع إغلاق التذكرة، أنت لست مسؤول",
+      ephemeral: true
+    });
+  }
 
-    await interaction.reply("🔒 يتم الإغلاق...");
-    setTimeout(() => interaction.channel.delete(), 3000);
+  ticketOwners.delete(channelId);
+  ticketData.delete(channelId);
+
+  await interaction.reply("🔒 يتم الإغلاق...");
+  setTimeout(() => interaction.channel.delete(), 3000);
+}
+});
+
+// ================= MODAL ================= //
+client.on("interactionCreate", async (interaction) => {
+
+  if (!interaction.isModalSubmit()) return;
+
+  if (interaction.customId === "review_modal") {
+
+    const rating = interaction.fields.getTextInputValue("rating");
+    const items = interaction.fields.getTextInputValue("items");
+
+    const data = pendingReviews.get(interaction.user.id);
+
+    const embed = new EmbedBuilder()
+      .setTitle("⭐ تقييم وسطاء خادم لوست")
+      .setColor("Gold")
+      .setDescription(
+`👤 العميل: <@${data.client}>
+🤝 الوسيط: <@${data.mediator}>
+
+⭐ التقييم: ${rating}
+📦 الأغراض: ${items}`
+      );
+
+    const guild = client.guilds.cache.first();
+    const reviewChannel = guild?.channels.cache.get(REVIEW_CHANNEL_ID);
+
+    if (reviewChannel)
+      reviewChannel.send({ embeds: [embed] });
+
+    pendingReviews.delete(interaction.user.id);
+
+    interaction.reply({ content: "✅ تم إرسال التقييم", ephemeral: true });
   }
 });
 
@@ -222,54 +249,75 @@ client.on("messageCreate", async (message) => {
   const cmd = args[0];
   const channelId = message.channel.id;
 
-  // ================= منع تكت ثاني ================= //
-  if (cmd === "$ticket" || cmd === "$open") {
+  // ================= $تم ================= //
+  if (cmd === "$تم") {
 
-    const existingTicket = [...ticketData.entries()].find(
-      t => t[1].client === message.author.id
-    );
+    const clientUser = message.mentions.users.first();
+    const mediatorUser = message.mentions.users.last();
 
-    if (existingTicket) {
-      return message.reply(`❌ لديك تذكرة مفتوحة بالفعل <#${existingTicket[0]}>`);
-    }
-  }
+    if (!clientUser || !mediatorUser)
+      return message.reply("❌ استخدم: $تم @العميل @الوسيط");
 
-  // ================= $trans ================= //
-  if (cmd === "$trans") {
-
-    const messages = transcriptCache.get(channelId) || [];
-
-    const doc = new PDFDocument();
-    const fileName = `transcript-${channelId}.pdf`;
-
-    doc.pipe(fs.createWriteStream(fileName));
-
-    doc.fontSize(18).text("Ticket Transcript", { align: "center" });
-    doc.moveDown();
-
-    messages.forEach(m => {
-      doc.fontSize(10).text(`[${m.time}] ${m.user}: ${m.content}`);
+    pendingReviews.set(clientUser.id, {
+      client: clientUser.id,
+      mediator: mediatorUser.id
     });
 
-    doc.end();
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("start_review")
+        .setLabel("⭐ ابدأ التقييم")
+        .setStyle(ButtonStyle.Primary)
+    );
 
-    setTimeout(() => {
+    try {
+      await clientUser.send({
+        content: `⭐ اضغط لبدء التقييم`,
+        components: [row]
+      });
+    } catch {}
 
-      const guild = message.guild;
-      const transcriptChannel = guild.channels.cache.get(TRANSCRIPT_CHANNEL_ID);
+    message.channel.send("📩 تم إرسال التقييم");
+  }
 
-      if (transcriptChannel) {
-        transcriptChannel.send({
-          content: `📄 ترانسكربت التكت: ${message.channel.name}`,
-          files: [fileName]
-        });
-      }
+  // ================= $add ================= //
+  if (cmd === "$add") {
+    const user = message.mentions.users.first();
+    if (!user) return;
 
-      message.channel.send("✅ تم إرسال الترانسكربت");
+    message.channel.permissionOverwrites.edit(user.id, {
+      ViewChannel: true,
+      SendMessages: true
+    });
 
-      transcriptCache.delete(channelId);
+    message.channel.send(`✅ تم إضافة ${user}`);
+  }
 
-    }, 2000);
+  // ================= $rename ================= //
+  if (cmd === "$rename") {
+    const name = args.slice(1).join("-");
+
+    await message.channel.setName(name);
+
+    message.channel.send(`✅ تم تغيير الاسم الى ${name}`);
+  }
+
+  // ================= $تبديل ================= //
+  if (cmd === "$تبديل") {
+    ticketOwners.set(channelId, null);
+    message.channel.send("🔁 تم تفريغ التكت");
+  }
+
+  // ================= 🟢 NEW $استلام ================= //
+  if (cmd === "$استلام") {
+
+    if (ticketOwners.get(channelId))
+      return message.reply("❌ التكت مستلم بالفعل");
+
+    ticketOwners.set(channelId, message.author.id);
+    ticketData.get(channelId).mediator = message.author.id;
+
+    message.channel.send(`🟢 تم استلام التكت بواسطة ${message.author}`);
   }
 
 });
