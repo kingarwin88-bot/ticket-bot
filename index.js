@@ -396,7 +396,7 @@ if (cmd === "$تم") {
   const mediatorUser = message.mentions.users.at(1);
 
   if (!clientUser || !mediatorUser)
-    return message.reply("❌ استخدم: $تم @العميل @الوسيط");
+    return message.reply("❌ استخدم: $تم @العميل1 @العميل2");
 
   // 🚫 منع نفس الشخص يكون عميل ووسيط
   if (clientUser.id === mediatorUser.id)
