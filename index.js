@@ -56,7 +56,19 @@ client.once("ready", async () => {
       .setStyle(ButtonStyle.Secondary)
   );
 
-  channel.send({ embeds: [embed], components: [row] });
+  const messages = await channel.messages.fetch({ limit: 10 }).catch(() => null);
+
+if (messages) {
+  const alreadySent = messages.find(
+    (m) =>
+      m.author.id === client.user.id &&
+      m.components.length > 0
+  );
+
+  if (alreadySent) return;
+
+  await channel.send({ embeds: [embed], components: [row] });
+}
 });
 
 // ================= INTERACTIONS ================= //
