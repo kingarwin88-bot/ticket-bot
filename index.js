@@ -388,6 +388,12 @@ if (allowedCommands.includes(cmd)) {
   }
 }
   const channelId = message.channel.id;
+const owner = ticketOwners.get(channelId);
+
+// إذا التكت مستلم + الشخص مو هو المستلم => ممنوع كل الأوامر
+if (owner && owner !== message.author.id) {
+  return message.reply("❌ هذا التكت مستلم من شخص آخر ولا يمكنك استخدام الأوامر فيه");
+}
 
   // ================= $تم ================= //
 if (cmd === "$تم") {
@@ -456,6 +462,10 @@ if (!name)
   if (cmd === "$تبديل") {
     
   const owner = ticketOwners.get(channelId);
+
+  if (!owner)
+    return message.reply("❌ هذه التذكرة غير مستلمة بالفعل");
+
 
   ticketOwners.set(channelId, null);
 
