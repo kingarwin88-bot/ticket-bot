@@ -211,19 +211,33 @@ if (hasTicket) {
   if (ticketOwners.get(channelId))
     return interaction.reply({ content: "❌ التكت مستلم", ephemeral: true });
 
+  const channel = interaction.channel;
+
+  // 🔒 تسجيل المستلم
   ticketOwners.set(channelId, interaction.user.id);
 
-  // 🔥 حماية من الكراش
-  if (!ticketData.has(channelId)) {
-    ticketData.set(channelId, {
-      client: null,
-      mediator: interaction.user.id
-    });
-  } else {
-    ticketData.get(channelId).mediator = interaction.user.id;
-  }
+  // 🔥 حماية من الكراش (تأكد البيانات موجودة)
+  const data = ticketData.get(channelId) || {
+    client: null,
+    mediator: null
+  };
 
-  interaction.reply(`🟢 تم الاستلام بواسطة ${interaction.user}`);
+  data.mediator = interaction.user.id;
+  ticketData.set(channelId, data);
+
+  // ================= حماية الستاف ================= //
+  await channel.permissionOverwrites.edit(STAFF_ROLE_ID, {
+    ViewChannel: true,
+    SendMessages: false
+  }).catch(() => {});
+
+  // ================= فتح الإدمن ================= //
+  await channel.permissionOverwrites.edit(ADMIN_ROLE_ID, {
+    ViewChannel: true,
+    SendMessages: true
+  }).catch(() => {});
+
+  return interaction.reply(`🟢 تم الاستلام بواسطة ${interaction.user}`);
 }
 
   // ================= REQUEST ================= //
